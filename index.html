@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Websocket test</title>
+    <style media="screen">
+      .box{
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        border-style: solid
+      }
+    </style>
+  </head>
+  <body>
+
+    <a id="login" style="display: none;" href="https://discordapp.com/api/oauth2/authorize?client_id=527275075762651156&redirect_uri=https%3A%2F%2Fwebsocketservertest.herokuapp.com%2F&response_type=token&scope=identify">login</a>
+    <font id="hello" size="+10"></font>
+    <script type="text/javascript">
+
+        window.onload = () => {
+          var params = new URLSearchParams(window.location.hash.slice(1));
+          if(params.has("access_token")){
+              const access_token = params.get("access_token");
+              const token_type = params.get("token_type");
+
+              fetch("https://discordapp.com/api/users/@me",{
+                  headers: {
+                      authorization: `${token_type} ${access_token}`
+                  }
+              })
+              .then(res => res.json())
+              .then(res => {
+                  var {username, discriminator, avatar, id} = res
+                  /*document.getElementById("hello").innerHTML = `Hello ${username}#${discriminator }`;
+                  document.body.style.backgroundImage = `url('https://cdn.discordapp.com/avatars/${id}/${avatar}.png')`;
+                  document.body.style.backgroundRepeat = "no-repeat";
+                  document.body.style.backgroundSize = "cover";
+                  document.body.style.backgroundPosition = "center";*/
+              })
+
+          }else{
+              document.getElementById("login").style.display = "block";
+          }
+
+
+        if(document.getElementById("login").style.display == "block")
+          return; //not logged in
+
+        //var selfbox = document.getElementById("selfBox");
+
+        var selfleft = 0;
+        var selftop = 0;
+
+        var HOST = location.origin.replace(/^http/, 'ws')
+        var ws = new WebSocket(HOST);
+
+        ws.onmessage = event => {
+          var data = JSON.parse(event.data);
+          if(data.type == "pos"){
+            if(document.getElementById("box"+data.id)===null){
+              document.body.innerHTML+=(`<div id='box${data.id}' class='box'>${data.username}</div>`);
+
+              var thisbox = document.getElementById("box"+data.id);
+              thisbox.style.backgroundImage = `url('https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png')`;
+              thisbox.style.backgroundRepeat = "no-repeat";
+              thisbox.style.backgroundSize = "cover";
+              thisbox.style.backgroundPosition = "center";
+            }
+
+            var thisbox = document.getElementById("box"+data.id);
+            thisbox.style.left = data.left+"px";
+            thisbox.style.top = data.top+"px";
+
+
+            if(data.ping) updatePos();
+          }else if(data.type == "dc"){
+            var thisbox = document.getElementById("box"+data.id)
+            if(thisbox) thisbox.remove();
+          }
+        }
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({
+            type: "init",
+            username: username,
+            discriminator: discriminator,
+            avatar: avatar,
+            id: id,
+          }));
+        }
+
+        document.onkeydown = function(event){
+          if(event.keyCode === 68){
+            selfleft+=30;
+            //selfbox.style.left = selfleft+"px";
+          }else if(event.keyCode === 87){
+            selftop-=30;
+            //selfbox.style.top = selftop+"px";
+          }else if(event.keyCode === 65){
+            selfleft-=30;
+            //selfbox.style.left = selfleft+"px";
+          }else if(event.keyCode === 83){
+            selftop+=30;
+            //selfbox.style.top = selftop+"px";
+          }
+
+          updatePos();
+        }
+
+        function updatePos(){
+          ws.send(JSON.stringify({
+            type: "pos",
+            top: selftop,
+            left: selfleft,
+          }));
+        }
+
+      }
+
+    </script>
+
+  </body>
+</html>
